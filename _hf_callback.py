@@ -3,10 +3,10 @@ import logging
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
-from transformers import TrainerCallback, TrainerControl, TrainerState, TrainingArguments
-from transformers.trainer_utils import get_last_checkpoint
-
 import determined as det
+from transformers import (TrainerCallback, TrainerControl, TrainerState,
+                          TrainingArguments)
+from transformers.trainer_utils import get_last_checkpoint
 
 logging.basicConfig(level=logging.INFO)
 
@@ -94,7 +94,10 @@ class DetCallback(TrainerCallback):  # type: ignore
         # (e.g., by pausing experiment in the WebUI), notify Trainer (via TrainerControl)
         # to save the checkpoint. After the checkpoint is uploaded to Determined storage,
         # the process is preempted (see on_save() method for details).
-        if self.updating_searcher is False and self.core_context.preempt.should_preempt():
+        if (
+            self.updating_searcher is False
+            and self.core_context.preempt.should_preempt()
+        ):
             control.should_save = True
 
     def _get_metrics(self, logs: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
@@ -133,7 +136,10 @@ class DetCallback(TrainerCallback):  # type: ignore
             return x.startswith((f"checkpoint-{state.global_step}/", "runs/"))
 
         self.core_context.checkpoint.upload(
-            args.output_dir, metadata=det_checkpoint_metadata, shard=True, selector=selector
+            args.output_dir,
+            metadata=det_checkpoint_metadata,
+            shard=True,
+            selector=selector,
         )
 
         if self.core_context.preempt.should_preempt():
@@ -245,7 +251,10 @@ class DetCallback(TrainerCallback):  # type: ignore
             control.should_training_stop = True
 
     def _metrics_reported(self, step: int) -> bool:
-        return self.last_metrics["eval_step"] == step and self.last_metrics["train_step"] == step
+        return (
+            self.last_metrics["eval_step"] == step
+            and self.last_metrics["train_step"] == step
+        )
 
     def _wait_for_metrics(self, control: TrainerControl) -> None:
         # Notify Trainer (via TrainerControl) to:
