@@ -25,7 +25,6 @@ import logging
 import math
 import os
 import sys
-import warnings
 from dataclasses import dataclass, field
 from itertools import chain
 from typing import Any, Dict, List, Optional, Tuple
@@ -38,11 +37,13 @@ import torch
 import transformers
 from datasets import load_dataset
 from determined.pytorch import dsat
+from torch.utils.tensorboard import SummaryWriter
 from transformers import (CONFIG_MAPPING, MODEL_FOR_CAUSAL_LM_MAPPING,
                           AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           GPTQConfig, HfArgumentParser, Trainer,
                           TrainingArguments, default_data_collator,
                           is_torch_tpu_available, set_seed)
+from transformers.integrations import TensorBoardCallback
 from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
@@ -317,7 +318,7 @@ def parse_input_arguments(
     return model_args, data_args, training_args
 
 
-def main(det_callback, model_args, data_args, training_args):
+def main(det_callback, tb_callback, model_args, data_args, training_args):
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
@@ -696,6 +697,7 @@ def main(det_callback, model_args, data_args, training_args):
     )
 
     trainer.add_callback(det_callback)
+    trainer.add_callback(tb_callback)
 
     # Training
     if training_args.do_train:
@@ -784,4 +786,5 @@ if __name__ == "__main__":
             "tags": ["language-modeling", "nlp"],
         }
         det_callback = DetCallback(core_context, training_args, user_data=user_data)
-        main(det_callback, model_args, data_args, training_args)
+        tb_callback = TensorBoardCallback(tb_writer=SummaryWriter(core_context.train.get_tensorboard_path()))
+        main(det_callback, tb_callback, model_args, data_args, training_args)

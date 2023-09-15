@@ -2,8 +2,8 @@ name: llm-fine-tuning
 workspace: llm-fine-tuning
 project: japanese-gpt-neox-small
 environment:
-  environment_variables:
-    - NCCL_DEBUG=INFO
+  # environment_variables:
+  #   - NCCL_DEBUG=INFO
   image:
     cpu: llm-fine-tuning:latest
     gpu: llm-fine-tuning:latest
@@ -36,8 +36,8 @@ searcher:
   name: single
   # name: adaptive_asha
   max_length:
-    # epochs: 3
-    batches: 900
+    epochs: 6
+    # batches: 900
   metric: eval_loss
   # max_trials: 32
   # max_concurrent_trials: 1
@@ -47,17 +47,19 @@ entrypoint: >-
   python run_clm.py
   --model_name_or_path rinna/japanese-gpt-neox-small
   --dataset_name llm-book/livedoor-news-corpus
-  --per_device_train_batch_size 16
-  --per_device_eval_batch_size 16
+  --num_train_epochs 6
+  --per_device_train_batch_size 8
+  --per_device_eval_batch_size 8
   --do_train
   --do_eval
   --bf16
+  --block_size 2048
   --output_dir outputs/test-clm
   --overwrite_output_dir
   --report_to wandb
+  --evaluation_strategy steps
+  --eval_steps 100
+  --logging_strategy steps
+  --logging_steps 100
 # --deepspeed ds_config_zero2.json
-# --logging_strategy steps
-# --logging_steps 50
-# --evaluation_strategy steps
-# --eval_steps 50
 # --save_strategy no
