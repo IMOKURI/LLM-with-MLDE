@@ -13,7 +13,7 @@ bind_mounts:
     container_path: outputs
   - host_path: /home/sugi/.cache
     container_path: /root/.cache
-  - host_path: /home/sugiyama/.netrc
+  - host_path: /home/sugi/.netrc
     container_path: /root/.netrc
 resources:
   slots_per_trial: 1
@@ -43,7 +43,7 @@ searcher:
   # max_concurrent_trials: 1
   # mode: aggressive
 entrypoint: >-
-  python -m determined.launch.deepspeed
+  python -m determined.launch.torch_distributed
   python run_clm.py
   --model_name_or_path rinna/japanese-gpt-neox-small
   --dataset_name llm-book/livedoor-news-corpus
@@ -55,9 +55,9 @@ entrypoint: >-
   --output_dir outputs/test-clm
   --overwrite_output_dir
   --report_to wandb
-  --logging_strategy steps
-  --logging_steps 50
-  --evaluation_strategy steps
-  --eval_steps 50
-  --save_strategy no
 # --deepspeed ds_config_zero2.json
+# --logging_strategy steps
+# --logging_steps 50
+# --evaluation_strategy steps
+# --eval_steps 50
+# --save_strategy no

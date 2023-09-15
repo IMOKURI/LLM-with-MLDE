@@ -503,7 +503,7 @@ def main():
             trust_remote_code=model_args.trust_remote_code,
             torch_dtype=torch_dtype,
             low_cpu_mem_usage=model_args.low_cpu_mem_usage,
-            quantization_config=GPTQConfig(bits=4, disable_exllama=True),
+            # quantization_config=GPTQConfig(bits=4, disable_exllama=True),
         )
 
         # https://github.com/huggingface/transformers/pull/24906
