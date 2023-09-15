@@ -346,9 +346,10 @@ def main(det_callback, tb_callback, model_args, data_args, training_args):
     transformers.utils.logging.enable_explicit_format()
 
     # Log on each process the small summary:
-    logger.warning(
-        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
-        + f"distributed training: {training_args.parallel_mode.value == 'distributed'}, 16-bits training: {training_args.fp16}"
+    logger.info(
+        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}, "
+        + f"distributed training: {training_args.parallel_mode.value == 'distributed'}, "
+        + f"16-bits training: {training_args.fp16 or training_args.bf16}"
     )
     logger.info(f"Training/evaluation parameters {training_args}")
 
@@ -786,5 +787,7 @@ if __name__ == "__main__":
             "tags": ["language-modeling", "nlp"],
         }
         det_callback = DetCallback(core_context, training_args, user_data=user_data)
-        tb_callback = TensorBoardCallback(tb_writer=SummaryWriter(core_context.train.get_tensorboard_path()))
+        tb_callback = TensorBoardCallback(
+            tb_writer=SummaryWriter(core_context.train.get_tensorboard_path())
+        )
         main(det_callback, tb_callback, model_args, data_args, training_args)
