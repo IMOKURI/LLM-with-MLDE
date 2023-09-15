@@ -31,15 +31,17 @@ from itertools import chain
 from typing import Optional
 
 import datasets
+import determined as det
 import evaluate
+import peft
 import torch
 import transformers
 from datasets import load_dataset
 from transformers import (CONFIG_MAPPING, MODEL_FOR_CAUSAL_LM_MAPPING,
                           AutoConfig, AutoModelForCausalLM, AutoTokenizer,
-                          HfArgumentParser, Trainer, TrainingArguments,
-                          default_data_collator, is_torch_tpu_available,
-                          set_seed)
+                          GPTQConfig, HfArgumentParser, Trainer,
+                          TrainingArguments, default_data_collator,
+                          is_torch_tpu_available, set_seed)
 from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
@@ -501,7 +503,12 @@ def main():
             trust_remote_code=model_args.trust_remote_code,
             torch_dtype=torch_dtype,
             low_cpu_mem_usage=model_args.low_cpu_mem_usage,
+            quantization_config=GPTQConfig(bits=4, disable_exllama=True),
         )
+
+        # https://github.com/huggingface/transformers/pull/24906
+        # model.config.pretraining_tp = 1
+
     else:
         model = AutoModelForCausalLM.from_config(
             config, trust_remote_code=model_args.trust_remote_code
@@ -510,6 +517,15 @@ def main():
         logger.info(
             f"Training new model from scratch - Total size={n_params/2**20:.2f}M params"
         )
+
+    peft_config = peft.LoraConfig(
+        task_type=peft.TaskType.CAUSAL_LM,
+        r=8,
+        lora_alpha=32,
+        lora_dropout=0.1,
+    )
+    model = peft.get_peft_model(model, peft_config)
+    # model.print_trainable_parameters()
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
@@ -523,7 +539,7 @@ def main():
         column_names = list(raw_datasets["train"].features)
     else:
         column_names = list(raw_datasets["validation"].features)
-    text_column_name = "text" if "text" in column_names else column_names[0]
+    text_column_name = "content" if "content" in column_names else column_names[0]
 
     # since this will be pickled to avoid _LazyModule error in Hasher force logger loading before tokenize_function
     tok_logger = transformers.utils.logging.get_logger(
@@ -558,6 +574,7 @@ def main():
                 remove_columns=column_names,
             )
 
+    logger.info(f"token length: {tokenizer.model_max_length}")
     if data_args.block_size is None:
         block_size = tokenizer.model_max_length
         if block_size > 1024:
@@ -574,6 +591,7 @@ def main():
                 f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}."
             )
         block_size = min(data_args.block_size, tokenizer.model_max_length)
+    logger.info(f"block size: {block_size}")
 
     # Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.
     def group_texts(examples):
