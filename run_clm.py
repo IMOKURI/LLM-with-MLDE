@@ -28,7 +28,7 @@ import sys
 import warnings
 from dataclasses import dataclass, field
 from itertools import chain
-from typing import Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import datasets
 import determined as det
@@ -37,6 +37,7 @@ import peft
 import torch
 import transformers
 from datasets import load_dataset
+from determined.pytorch import dsat
 from transformers import (CONFIG_MAPPING, MODEL_FOR_CAUSAL_LM_MAPPING,
                           AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           GPTQConfig, HfArgumentParser, Trainer,
@@ -46,6 +47,8 @@ from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
+
+from _hf_callback import DetCallback
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.34.0.dev0")
@@ -280,10 +283,18 @@ class DataTrainingArguments:
                 ], "`validation_file` should be a csv, a json or a txt file."
 
 
-def main():
-    # See all possible arguments in src/transformers/training_args.py
-    # or by passing the --help flag to this script.
-    # We now keep distinct sets of args, for a cleaner separation of concerns.
+def dict2args(hparams: Dict[str, Any]) -> List[str]:
+    out = []
+    for key in hparams:
+        out.append("--" + str(key))
+        out.append(str(hparams[key]))
+    return out
+
+
+def parse_input_arguments(
+    hparams: Dict[str, Any]
+) -> Tuple[ModelArguments, DataTrainingArguments, TrainingArguments]:
+    training_arguments = hparams.get("training_arguments", {})
 
     parser = HfArgumentParser(
         (ModelArguments, DataTrainingArguments, TrainingArguments)
@@ -295,18 +306,21 @@ def main():
             json_file=os.path.abspath(sys.argv[1])
         )
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-
-    if model_args.use_auth_token is not None:
-        warnings.warn(
-            "The `use_auth_token` argument is deprecated and will be removed in v4.34.",
-            FutureWarning,
+        args = sys.argv[1:]
+        args.extend(dict2args(training_arguments))
+        if any("--deepspeed" == arg.strip() for arg in args):
+            args = dsat.get_hf_args_with_overwrites(args, hparams)
+        model_args, data_args, training_args = parser.parse_args_into_dataclasses(
+            args, look_for_args_file=False
         )
-        if model_args.token is not None:
-            raise ValueError(
-                "`token` and `use_auth_token` are both specified. Please set only the argument `token`."
-            )
-        model_args.token = model_args.use_auth_token
+
+    return model_args, data_args, training_args
+
+
+def main(det_callback, model_args, data_args, training_args):
+    # See all possible arguments in src/transformers/training_args.py
+    # or by passing the --help flag to this script.
+    # We now keep distinct sets of args, for a cleaner separation of concerns.
 
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
     # information sent is the one passed as arguments along with your Python/PyTorch versions.
@@ -681,6 +695,8 @@ def main():
         else None,
     )
 
+    trainer.add_callback(det_callback)
+
     # Training
     if training_args.do_train:
         checkpoint = None
@@ -751,4 +767,21 @@ def _mp_fn(index):
 
 
 if __name__ == "__main__":
-    main()
+    info = det.get_cluster_info()
+    assert info
+    hparams = info.trial.hparams
+    model_args, data_args, training_args = parse_input_arguments(hparams)
+    if training_args.deepspeed:
+        distributed = det.core.DistributedContext.from_deepspeed()
+    else:
+        distributed = det.core.DistributedContext.from_torch_distributed()
+
+    with det.core.init(distributed=distributed) as core_context:
+        user_data = {
+            "finetuned_from": model_args.model_name_or_path,
+            "tasks": "language-modeling",
+            "dataset": data_args.dataset_name,
+            "tags": ["language-modeling", "nlp"],
+        }
+        det_callback = DetCallback(core_context, training_args, user_data=user_data)
+        main(det_callback, model_args, data_args, training_args)
