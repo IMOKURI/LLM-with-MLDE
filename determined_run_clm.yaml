@@ -1,0 +1,63 @@
+name: llm-fine-tuning
+workspace: llm-fine-tuning
+project: japanese-gpt-neox-small
+environment:
+  environment_variables:
+    - NCCL_DEBUG=INFO
+  image:
+    cpu: llm-fine-tuning:latest
+    gpu: llm-fine-tuning:latest
+  force_pull_image: false
+bind_mounts:
+  - host_path: /home/sugi/work/llm-fine-tuning/outputs
+    container_path: outputs
+  - host_path: /home/sugi/.cache
+    container_path: /root/.cache
+  - host_path: /home/sugiyama/.netrc
+    container_path: /root/.netrc
+resources:
+  slots_per_trial: 1
+  shm_size: 274877906944
+max_restarts: 0
+# hyperparameters:
+#   training_arguments:
+#     learning_rate:
+#       type: log
+#       base: 10
+#       minval: -5
+#       maxval: -3
+#     per_device_train_batch_size:
+#       type: int
+#       minval: 2
+#       maxval: 5
+profiling:
+  enabled: true
+searcher:
+  name: single
+  # name: adaptive_asha
+  max_length:
+    # epochs: 3
+    batches: 900
+  metric: eval_loss
+  # max_trials: 32
+  # max_concurrent_trials: 1
+  # mode: aggressive
+entrypoint: >-
+  python -m determined.launch.deepspeed
+  python run_clm.py
+  --model_name_or_path rinna/japanese-gpt-neox-small
+  --dataset_name llm-book/livedoor-news-corpus
+  --per_device_train_batch_size 1
+  --per_device_eval_batch_size 1
+  --do_train
+  --do_eval
+  --bf16
+  --output_dir outputs/test-clm
+  --overwrite_output_dir
+  --report_to wandb
+  --logging_strategy steps
+  --logging_steps 50
+  --evaluation_strategy steps
+  --eval_steps 50
+  --save_strategy no
+# --deepspeed ds_config_zero2.json
