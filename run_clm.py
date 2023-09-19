@@ -50,6 +50,7 @@ from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
 from _hf_callback import DetCallback
+from _profiler_callback import ProfCallback
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.34.0.dev0")
@@ -707,7 +708,14 @@ def main(det_callback, tb_callback, model_args, data_args, training_args):
             checkpoint = training_args.resume_from_checkpoint
         elif last_checkpoint is not None:
             checkpoint = last_checkpoint
+
+        activities = [torch.profiler.ProfilerActivity.CPU, ]
+        with torch.profiler.profile()
+
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
+
+
+
         trainer.save_model()  # Saves the tokenizer too for easy upload
 
         metrics = train_result.metrics

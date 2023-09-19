@@ -2,21 +2,24 @@ name: llm-fine-tuning
 workspace: llm-fine-tuning
 project: japanese-gpt-neox-small
 environment:
-  # environment_variables:
-  #   - NCCL_DEBUG=INFO
+  environment_variables:
+    - NCCL_DEBUG=INFO
+    - http_proxy=http://hpeproxy.its.hpecorp.net:8080/
+    - https_proxy=http://hpeproxy.its.hpecorp.net:8080/
+    - no_proxy=localhost,127.0.0.1,ponkots01,16.171.32.68,10.0.0.0/8,192.168.0.0/16,172.16.0.0/16
   image:
-    cpu: llm-fine-tuning:latest
-    gpu: llm-fine-tuning:latest
+    cpu: localhost:32000/llm-fine-tuning:latest
+    gpu: localhost:32000/llm-fine-tuning:latest
   force_pull_image: false
 bind_mounts:
-  - host_path: /home/sugi/work/llm-fine-tuning/outputs
+  - host_path: /data/microk8s/jhub-claim-sugiyama-pvc-695191f5-690d-4804-a951-f2de3df6aa50/llm-fine-tuning/outputs
     container_path: outputs
-  - host_path: /home/sugi/.cache
+  - host_path: /data/home/sugiyama/.cache
     container_path: /root/.cache
-  - host_path: /home/sugi/.netrc
+  - host_path: /home/sugiyama/.netrc
     container_path: /root/.netrc
 resources:
-  slots_per_trial: 1
+  slots_per_trial: 8
   shm_size: 274877906944
 max_restarts: 0
 # hyperparameters:
@@ -30,11 +33,6 @@ max_restarts: 0
 #       type: int
 #       minval: 2
 #       maxval: 5
-profiling:
-  enabled: true
-  begin_on_batch: 0
-  end_after_batch: null
-  sync_timings: false
 searcher:
   name: single
   # name: adaptive_asha
@@ -51,12 +49,13 @@ entrypoint: >-
   --model_name_or_path rinna/japanese-gpt-neox-small
   --dataset_name llm-book/livedoor-news-corpus
   --num_train_epochs 1
-  --per_device_train_batch_size 8
-  --per_device_eval_batch_size 8
+  --per_device_train_batch_size 1
+  --per_device_eval_batch_size 1
   --do_train
   --do_eval
-  --bf16
-  --block_size 2048
+  --fp16
+  --block_size 1024
+  --deepspeed ds_config_zero2.json
   --output_dir outputs/test-clm
   --overwrite_output_dir
   --report_to wandb
@@ -64,5 +63,4 @@ entrypoint: >-
   --eval_steps 100
   --logging_strategy steps
   --logging_steps 100
-# --deepspeed ds_config_zero2.json
-# --save_strategy no
+  --save_strategy no
