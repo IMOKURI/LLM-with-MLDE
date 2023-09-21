@@ -3,7 +3,7 @@ workspace: llm-fine-tuning
 project: japanese-gpt-neox-small
 environment:
   environment_variables:
-    - NCCL_DEBUG=INFO
+    # - NCCL_DEBUG=INFO
     - http_proxy=http://hpeproxy.its.hpecorp.net:8080/
     - https_proxy=http://hpeproxy.its.hpecorp.net:8080/
     - no_proxy=localhost,127.0.0.1,ponkots01,16.171.32.68,10.0.0.0/8,192.168.0.0/16,172.16.0.0/16
@@ -19,7 +19,7 @@ bind_mounts:
   - host_path: /home/sugiyama/.netrc
     container_path: /root/.netrc
 resources:
-  slots_per_trial: 8
+  slots_per_trial: 2
   shm_size: 274877906944
 max_restarts: 0
 # hyperparameters:
@@ -44,7 +44,7 @@ searcher:
   # max_concurrent_trials: 1
   # mode: aggressive
 entrypoint: >-
-  python -m determined.launch.torch_distributed
+  python -m determined.launch.deepspeed
   python run_clm.py
   --model_name_or_path rinna/japanese-gpt-neox-small
   --dataset_name llm-book/livedoor-news-corpus
@@ -58,9 +58,9 @@ entrypoint: >-
   --deepspeed ds_config_zero2.json
   --output_dir outputs/test-clm
   --overwrite_output_dir
-  --report_to wandb
   --evaluation_strategy steps
   --eval_steps 100
   --logging_strategy steps
   --logging_steps 100
   --save_strategy no
+  --report_to wandb

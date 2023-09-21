@@ -50,10 +50,9 @@ from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
 from _hf_callback import DetCallback
-from _profiler_callback import ProfCallback
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.34.0.dev0")
+check_min_version("4.33.0.dev0")
 
 require_version(
     "datasets>=1.8.0",
@@ -319,7 +318,7 @@ def parse_input_arguments(
     return model_args, data_args, training_args
 
 
-def main(det_callback, tb_callback, model_args, data_args, training_args, core_context):
+def main(det_callback, tb_callback, model_args, data_args, training_args):
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
@@ -709,22 +708,7 @@ def main(det_callback, tb_callback, model_args, data_args, training_args, core_c
         elif last_checkpoint is not None:
             checkpoint = last_checkpoint
 
-        activities = [
-            torch.profiler.ProfilerActivity.CPU,
-            torch.profiler.ProfilerActivity.CUDA,
-        ]
-        with torch.profiler.profile(
-            activities=activities,
-            profile_memory=True,
-            record_shapes=True,
-            with_stack=True,
-            on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                str(core_context.train.get_tensorboard_path())
-            ),
-        ) as prof:
-            trainer.add_callback(ProfCallback(prof=prof))
-            train_result = trainer.train(resume_from_checkpoint=checkpoint)
-
+        train_result = trainer.train(resume_from_checkpoint=checkpoint)
         trainer.save_model()  # Saves the tokenizer too for easy upload
 
         metrics = train_result.metrics
@@ -813,5 +797,4 @@ if __name__ == "__main__":
             model_args,
             data_args,
             training_args,
-            core_context,
         )

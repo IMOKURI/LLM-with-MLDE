@@ -6,7 +6,11 @@ IMAGE_TAG = latest
 
 
 build: ## Build container image.
-	docker build -t llm-fine-tuning:$(IMAGE_TAG) .
+	docker build --build-arg PROXY=$(http_proxy) -t localhost:32000/llm-fine-tuning:$(IMAGE_TAG) .
+
+
+push: ## Push image to registry.
+	docker push localhost:32000/llm-fine-tuning:$(IMAGE_TAG)
 
 
 run: ## Run experiment.
