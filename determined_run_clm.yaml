@@ -22,35 +22,49 @@ resources:
   slots_per_trial: 2
   shm_size: 274877906944
 max_restarts: 0
-# hyperparameters:
-#   training_arguments:
-#     learning_rate:
-#       type: log
-#       base: 10
-#       minval: -5
-#       maxval: -3
-#     per_device_train_batch_size:
-#       type: int
-#       minval: 2
-#       maxval: 5
+hyperparameters:
+  lora_r:
+    type: categorical
+    vals:
+      - 1
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
+  lora_alpha:
+    type: categorical
+    vals:
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+  training_arguments:
+    learning_rate:
+      type: log
+      base: 10
+      minval: -5
+      maxval: -3
 searcher:
-  name: single
-  # name: adaptive_asha
+  # name: single
+  name: adaptive_asha
   max_length:
-    epochs: 1
-    # batches: 900
+    # epochs: 1
+    batches: 1000
   metric: eval_loss
-  # max_trials: 32
-  # max_concurrent_trials: 1
+  max_trials: 32
+  max_concurrent_trials: 4
   # mode: aggressive
 entrypoint: >-
   python -m determined.launch.deepspeed
   python run_clm.py
   --model_name_or_path rinna/japanese-gpt-neox-small
   --dataset_name llm-book/livedoor-news-corpus
-  --num_train_epochs 1
-  --per_device_train_batch_size 1
-  --per_device_eval_batch_size 1
+  --num_train_epochs 5
+  --per_device_train_batch_size 8
+  --per_device_eval_batch_size 8
   --do_train
   --do_eval
   --fp16

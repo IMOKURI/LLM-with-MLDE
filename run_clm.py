@@ -318,7 +318,7 @@ def parse_input_arguments(
     return model_args, data_args, training_args
 
 
-def main(det_callback, tb_callback, model_args, data_args, training_args):
+def main(det_callback, tb_callback, model_args, data_args, training_args, hparams):
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
@@ -536,8 +536,8 @@ def main(det_callback, tb_callback, model_args, data_args, training_args):
 
     peft_config = peft.LoraConfig(
         task_type=peft.TaskType.CAUSAL_LM,
-        r=8,
-        lora_alpha=32,
+        r=int(hparams.get("lora_r", 8)),
+        lora_alpha=int(hparams.get("lora_alpha", 16)),
         lora_dropout=0.1,
     )
     model = peft.get_peft_model(model, peft_config)
@@ -797,4 +797,5 @@ if __name__ == "__main__":
             model_args,
             data_args,
             training_args,
+            hparams,
         )
