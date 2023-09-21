@@ -54,7 +54,7 @@ searcher:
     # epochs: 1
     batches: 1000
   metric: eval_loss
-  max_trials: 32
+  max_trials: 256
   max_concurrent_trials: 4
   # mode: aggressive
 entrypoint: >-
