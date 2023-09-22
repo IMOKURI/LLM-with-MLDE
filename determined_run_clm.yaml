@@ -47,6 +47,10 @@ hyperparameters:
       base: 10
       minval: -5
       maxval: -3
+    per_device_train_batch_size:
+      type: int
+      minval: 1
+      maxval: 8
 searcher:
   # name: single
   name: adaptive_asha
@@ -63,8 +67,6 @@ entrypoint: >-
   --model_name_or_path rinna/japanese-gpt-neox-small
   --dataset_name llm-book/livedoor-news-corpus
   --num_train_epochs 5
-  --per_device_train_batch_size 8
-  --per_device_eval_batch_size 8
   --do_train
   --do_eval
   --fp16
@@ -73,8 +75,7 @@ entrypoint: >-
   --output_dir outputs/test-clm
   --overwrite_output_dir
   --evaluation_strategy steps
-  --eval_steps 100
+  --eval_steps 20
   --logging_strategy steps
-  --logging_steps 100
-  --save_strategy no
+  --logging_steps 20
   --report_to wandb
