@@ -17,5 +17,9 @@ run: ## Run experiment.
 	det experiment create ./determined_run_clm.yaml .
 
 
+chat: ## Run chat.
+	python3 -m fastchat.serve.cli --num-gpus 8 --model-path TheBloke/Xwin-LM-7B-V0.1-GPTQ
+
+
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[38;2;98;209;150m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
